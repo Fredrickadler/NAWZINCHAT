@@ -20,7 +20,17 @@ export async function POST(request: NextRequest) {
       .eq('username', username)
       .single()
 
-    if (fetchError || !user) {
+    if (fetchError) {
+      console.error('Supabase fetch error:', fetchError)
+      // Don't reveal if user exists or not for security
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+
+    if (!user) {
+      console.log('User not found:', username)
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
