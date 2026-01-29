@@ -15,13 +15,16 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
+    // Accept any username, password is optional for testing
+    const loginUsername = username || 'Guest'
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: loginUsername, password: password || 'any' }),
       })
 
       const data = await response.json()
@@ -58,9 +61,8 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              required
               className="w-full px-4 py-2 bg-[#242f3d] border border-[#2b5278] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#5288c1] focus:border-transparent"
-              placeholder="Enter your username"
+              placeholder="Enter your username (optional)"
             />
           </div>
           <div>
@@ -75,9 +77,8 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
               className="w-full px-4 py-2 bg-[#242f3d] border border-[#2b5278] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#5288c1] focus:border-transparent"
-              placeholder="Enter your password"
+              placeholder="Enter your password (optional)"
             />
           </div>
           {error && (
@@ -94,7 +95,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-gray-400">
-          Username: NaWziN یا NaWziN2
+          هر username و password را وارد کن (برای تست)
         </p>
       </div>
     </div>

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateToken } from '@/lib/auth'
 
@@ -7,43 +6,37 @@ export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json()
 
-    if (!username || !password) {
-      return NextResponse.json(
-        { error: 'Username and password are required' },
-        { status: 400 }
-      )
-    }
-
-    const { data: user, error: fetchError } = await supabaseAdmin
+    // Accept any username/password for testing
+    const loginUsername = username || 'Guest'
+    
+    // Try to find user by username, or create a new one
+    let { data: user, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('username', username)
+      .eq('username', loginUsername)
       .single()
 
-    if (fetchError) {
-      console.error('Supabase fetch error:', fetchError)
-      // Don't reveal if user exists or not for security
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
-    }
+    // If user doesn't exist, create a new one
+    if (fetchError || !user) {
+      const { data: newUser, error: createError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          username: loginUsername,
+          password: 'no-password-check', // No password check for testing
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${loginUsername}`,
+        })
+        .select()
+        .single()
 
-    if (!user) {
-      console.log('User not found:', username)
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
-    }
+      if (createError || !newUser) {
+        console.error('Error creating user:', createError)
+        return NextResponse.json(
+          { error: 'Failed to create user' },
+          { status: 500 }
+        )
+      }
 
-    const isValidPassword = await bcrypt.compare(password, user.password)
-
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
+      user = newUser
     }
 
     // Update last seen
