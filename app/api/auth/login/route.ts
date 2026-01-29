@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase'
 import { generateToken } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -14,11 +14,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username },
-    })
+    const { data: user, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .single()
 
-    if (!user) {
+    if (fetchError || !user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -35,10 +37,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Update last seen
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastSeen: new Date() },
-    })
+    await supabaseAdmin
+      .from('users')
+      .update({ lastSeen: new Date().toISOString() })
+      .eq('id', user.id)
 
     const token = generateToken({
       userId: user.id,

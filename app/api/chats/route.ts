@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,86 +10,97 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all chats where user is a member
-    const chatMemberships = await prisma.chatMember.findMany({
-      where: { userId: user.id },
-      include: {
-        chat: {
-          include: {
-            members: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    username: true,
-                    avatar: true,
-                    lastSeen: true,
-                  },
-                },
-              },
-            },
-            messages: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-              include: {
-                sender: {
-                  select: {
-                    id: true,
-                    username: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        chat: {
-          updatedAt: 'desc',
-        },
-      },
-    })
+    // Get all chat memberships for this user
+    const { data: memberships, error: membershipsError } = await supabaseAdmin
+      .from('chat_members')
+      .select('chatId')
+      .eq('userId', user.id)
+
+    if (membershipsError || !memberships || memberships.length === 0) {
+      return NextResponse.json({ chats: [] })
+    }
+
+    const chatIds = memberships.map((m) => m.chatId)
+
+    // Get all chats
+    const { data: chats, error: chatsError } = await supabaseAdmin
+      .from('chats')
+      .select('*')
+      .in('id', chatIds)
+      .order('updatedAt', { ascending: false })
+
+    if (chatsError || !chats) {
+      return NextResponse.json({ chats: [] })
+    }
 
     // Format chats for frontend
-    const chats = await Promise.all(
-      chatMemberships.map(async (membership) => {
-        const chat = membership.chat
-        const otherMembers = chat.members
-          .filter((m) => m.userId !== user.id)
-          .map((m) => m.user)
+    const formattedChats = await Promise.all(
+      chats.map(async (chat: any) => {
+        // Get chat members
+        const { data: chatMembers } = await supabaseAdmin
+          .from('chat_members')
+          .select('userId')
+          .eq('chatId', chat.id)
 
-        const lastMessage = chat.messages[0] || null
+        const memberIds = chatMembers?.map((m: { userId: string }) => m.userId) || []
+        const otherMemberIds = memberIds.filter((id: string) => id !== user.id)
 
-        // Count unread messages (messages not sent by user and not seen)
-        const unreadCount = await prisma.message.count({
-          where: {
-            chatId: chat.id,
-            senderId: { not: user.id },
-            seen: false,
-          },
-        })
+        // Get other members info
+        const { data: otherMembers } = await supabaseAdmin
+          .from('users')
+          .select('id, username, avatar, lastSeen')
+          .in('id', otherMemberIds)
+
+        // Get last message
+        const { data: lastMessages } = await supabaseAdmin
+          .from('messages')
+          .select('id, content, senderId, createdAt, seen')
+          .eq('chatId', chat.id)
+          .order('createdAt', { ascending: false })
+          .limit(1)
+
+        const lastMessage = lastMessages?.[0] || null
+
+        // Get sender info for last message
+        let senderUsername = null
+        if (lastMessage) {
+          const { data: sender } = await supabaseAdmin
+            .from('users')
+            .select('username')
+            .eq('id', lastMessage.senderId)
+            .single()
+          senderUsername = sender?.username || null
+        }
+
+        // Count unread messages
+        const { count: unreadCount } = await supabaseAdmin
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('chatId', chat.id)
+          .neq('senderId', user.id)
+          .eq('seen', false)
 
         return {
           id: chat.id,
           isPrivate: chat.isPrivate,
-          otherMembers,
+          otherMembers: otherMembers || [],
           lastMessage: lastMessage
             ? {
                 id: lastMessage.id,
                 content: lastMessage.content,
                 senderId: lastMessage.senderId,
-                senderUsername: lastMessage.sender.username,
+                senderUsername,
                 createdAt: lastMessage.createdAt,
                 seen: lastMessage.seen,
               }
             : null,
-          unreadCount,
+          unreadCount: unreadCount || 0,
           updatedAt: chat.updatedAt,
         }
       })
     )
 
-    return NextResponse.json({ chats })
+    return NextResponse.json({ chats: formattedChats })
   } catch (error) {
     console.error('Error fetching chats:', error)
     return NextResponse.json(

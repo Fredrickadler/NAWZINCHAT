@@ -16,8 +16,8 @@ A Telegram-like web messaging application built with Next.js, TypeScript, Postgr
 - **Frontend**: Next.js 14 (App Router) + React + TypeScript
 - **Styling**: Tailwind CSS
 - **Backend**: Next.js API routes
-- **Database**: PostgreSQL
-- **ORM**: Prisma
+- **Database**: Supabase (PostgreSQL)
+- **ORM**: Supabase Client SDK
 - **Realtime**: Socket.IO
 
 ## Prerequisites
@@ -36,23 +36,24 @@ A Telegram-like web messaging application built with Next.js, TypeScript, Postgr
 2. **Set up environment variables**:
    Create a `.env` file in the root directory:
    ```env
-   DATABASE_URL="postgresql://user:password@localhost:5432/nawzin_chat?schema=public"
+   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
    JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
-   NEXT_PUBLIC_SOCKET_URL="http://localhost:3000"
    ```
 
 3. **Set up the database**:
-   ```bash
-   npx prisma db push
-   npx prisma generate
-   ```
+   - در Supabase SQL Editor، SQL از فایل `SUPABASE_SETUP.md` را اجرا کن
+   - یا از SQL که قبلاً داده‌ام استفاده کن
 
 4. **Seed the database**:
    ```bash
    npm run db:seed
    ```
 
-   This creates 4 users (alice, bob, charlie, diana) with password `password123`.
+   This creates 2 users:
+   - **Username**: `NaWziN`, **Password**: `Nazi`
+   - **Username**: `NaWziN2`, **Password**: `Fredrick`
 
 5. **Run the development server**:
    ```bash
@@ -61,13 +62,13 @@ A Telegram-like web messaging application built with Next.js, TypeScript, Postgr
 
    The application will be available at `http://localhost:3000`
 
-   **Note**: This project uses a custom Next.js server with Socket.IO integration. The `dev` script runs `server.ts` which handles both Next.js and WebSocket connections.
+   **Note**: This project uses Supabase for database. See `SUPABASE_SETUP.md` for detailed setup instructions.
 
 ## Usage
 
 1. Login with one of the seeded users:
-   - Username: `alice`, `bob`, `charlie`, or `diana`
-   - Password: `password123`
+   - Username: `NaWziN`, Password: `Nazi`
+   - Username: `NaWziN2`, Password: `Fredrick`
 
 2. Select a chat from the sidebar to start messaging
 
@@ -82,8 +83,8 @@ A Telegram-like web messaging application built with Next.js, TypeScript, Postgr
 │   ├── login/        # Login page
 │   └── layout.tsx    # Root layout
 ├── components/        # React components
-├── lib/              # Utilities (Prisma, auth)
-├── prisma/           # Prisma schema and seed
+├── lib/              # Utilities (Supabase, auth)
+├── scripts/          # Seed scripts
 └── server.ts         # Socket.IO server
 ```
 
@@ -99,16 +100,13 @@ A Telegram-like web messaging application built with Next.js, TypeScript, Postgr
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
-- `npm run db:push` - Push Prisma schema to database
-- `npm run db:seed` - Seed the database
-- `npm run db:studio` - Open Prisma Studio
+- `npm run db:seed` - Seed the database (create users)
 
 ## Notes
 
 - Users must be pre-created (no signup page)
 - All messages persist in the database
 - WebSocket connection is established per authenticated user
-- Default password for all seeded users is `password123`
-- The application uses a custom Next.js server (`server.ts`) to integrate Socket.IO
-- For Windows users: If you encounter issues with the start script, you may need to use `cross-env` or run the server directly with `tsx server.ts`
+- The application uses Supabase for database operations
+- See `SUPABASE_SETUP.md` for detailed setup instructions
 

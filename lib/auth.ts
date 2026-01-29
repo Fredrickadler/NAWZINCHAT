@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { prisma } from './prisma'
+import { supabaseAdmin } from './supabase'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production'
 
@@ -33,15 +33,15 @@ export async function getCurrentUser(request: NextRequest) {
     return null
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: {
-      id: true,
-      username: true,
-      avatar: true,
-      lastSeen: true,
-    },
-  })
+  const { data: user, error } = await supabaseAdmin
+    .from('users')
+    .select('id, username, avatar, lastSeen')
+    .eq('id', payload.userId)
+    .single()
+
+  if (error || !user) {
+    return null
+  }
 
   return user
 }

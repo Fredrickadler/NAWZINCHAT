@@ -3,7 +3,7 @@ import { parse } from 'url'
 import next from 'next'
 import { Server } from 'socket.io'
 import jwt from 'jsonwebtoken'
-import { prisma } from './lib/prisma'
+import { supabaseAdmin } from './lib/supabase'
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = 'localhost'
@@ -57,11 +57,13 @@ app.prepare().then(() => {
 
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string }
       
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-      })
+      const { data: user, error } = await supabaseAdmin
+        .from('users')
+        .select('id, username')
+        .eq('id', decoded.userId)
+        .single()
 
-      if (!user) {
+      if (error || !user) {
         return next(new Error('User not found'))
       }
 
@@ -86,12 +88,12 @@ app.prepare().then(() => {
         const { chatId, message } = data
 
         // Verify user is a member of the chat
-        const membership = await prisma.chatMember.findFirst({
-          where: {
-            chatId,
-            userId: socket.data.userId,
-          },
-        })
+        const { data: membership } = await supabaseAdmin
+          .from('chat_members')
+          .select('id')
+          .eq('chatId', chatId)
+          .eq('userId', socket.data.userId)
+          .single()
 
         if (!membership) {
           socket.emit('error', { message: 'Access denied' })
@@ -99,18 +101,30 @@ app.prepare().then(() => {
         }
 
         // Get chat members
-        const chatMembers = await prisma.chatMember.findMany({
-          where: { chatId },
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                avatar: true,
-              },
-            },
+        const { data: chatMembersData } = await supabaseAdmin
+          .from('chat_members')
+          .select('userId')
+          .eq('chatId', chatId)
+
+        if (!chatMembersData) {
+          return
+        }
+
+        // Get user info for each member
+        const memberIds = chatMembersData.map((m) => m.userId)
+        const { data: users } = await supabaseAdmin
+          .from('users')
+          .select('id, username, avatar')
+          .in('id', memberIds)
+
+        const chatMembers = users?.map((user) => ({
+          userId: user.id,
+          user: {
+            id: user.id,
+            username: user.username,
+            avatar: user.avatar,
           },
-        })
+        })) || []
 
         // Emit to all members of the chat
         chatMembers.forEach((member) => {
