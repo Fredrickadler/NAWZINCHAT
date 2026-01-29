@@ -4,50 +4,33 @@ import * as bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create users
-  const password = await bcrypt.hash('password123', 10)
+  // Create users with NaWziN username pattern
+  // Note: Username must be unique, so we use similar but different usernames
+  
+  const password1 = await bcrypt.hash('Nazi', 10)
+  const password2 = await bcrypt.hash('Fredrick', 10)
 
   const user1 = await prisma.user.upsert({
-    where: { username: 'alice' },
+    where: { username: 'NaWziN' },
     update: {},
     create: {
-      username: 'alice',
-      password,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice',
+      username: 'NaWziN',
+      password: password1,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=NaWziN1',
     },
   })
 
   const user2 = await prisma.user.upsert({
-    where: { username: 'bob' },
+    where: { username: 'NaWziN2' },
     update: {},
     create: {
-      username: 'bob',
-      password,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob',
+      username: 'NaWziN2',
+      password: password2,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=NaWziN2',
     },
   })
 
-  const user3 = await prisma.user.upsert({
-    where: { username: 'charlie' },
-    update: {},
-    create: {
-      username: 'charlie',
-      password,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie',
-    },
-  })
-
-  const user4 = await prisma.user.upsert({
-    where: { username: 'diana' },
-    update: {},
-    create: {
-      username: 'diana',
-      password,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=diana',
-    },
-  })
-
-  // Create private chat between alice and bob
+  // Create private chat between the two users
   const chat1 = await prisma.chat.create({
     data: {
       isPrivate: true,
@@ -61,73 +44,29 @@ async function main() {
     },
   })
 
-  // Create private chat between alice and charlie
-  const chat2 = await prisma.chat.create({
-    data: {
-      isPrivate: true,
-      creatorId: user1.id,
-      members: {
-        create: [
-          { userId: user1.id },
-          { userId: user3.id },
-        ],
-      },
-    },
-  })
-
-  // Create private chat between alice and diana
-  const chat3 = await prisma.chat.create({
-    data: {
-      isPrivate: true,
-      creatorId: user1.id,
-      members: {
-        create: [
-          { userId: user1.id },
-          { userId: user4.id },
-        ],
-      },
-    },
-  })
-
   // Add some initial messages
   await prisma.message.createMany({
     data: [
       {
         chatId: chat1.id,
-        senderId: user2.id,
-        content: 'Hey Alice! How are you?',
-        seen: true,
-      },
-      {
-        chatId: chat1.id,
         senderId: user1.id,
-        content: 'Hi Bob! I\'m doing great, thanks for asking!',
-        seen: true,
+        content: 'سلام! چطوری؟',
+        seen: false,
       },
       {
         chatId: chat1.id,
         senderId: user2.id,
-        content: 'That\'s awesome! Want to grab coffee later?',
-        seen: false,
-      },
-      {
-        chatId: chat2.id,
-        senderId: user3.id,
-        content: 'Hello Alice!',
-        seen: false,
-      },
-      {
-        chatId: chat3.id,
-        senderId: user4.id,
-        content: 'Hi there! 👋',
+        content: 'سلام! خوبم ممنون 😊',
         seen: false,
       },
     ],
   })
 
   console.log('Seed data created successfully!')
-  console.log('Users created:', { user1, user2, user3, user4 })
-  console.log('Chats created:', { chat1, chat2, chat3 })
+  console.log('Users created:')
+  console.log('  - Username: NaWziN, Password: Nazi')
+  console.log('  - Username: NaWziN2, Password: Fredrick')
+  console.log('Chat created between the two users')
 }
 
 main()
