@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../lib/supabase'
 import * as bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 
 async function main() {
   console.log('Starting seed...')
@@ -40,6 +41,7 @@ async function main() {
     const { data: created } = await supabaseAdmin
       .from('users')
       .insert({
+        id: randomUUID(),
         username: 'NaWziN',
         password: password1,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=NaWziN1',
@@ -66,6 +68,7 @@ async function main() {
     const { data: created } = await supabaseAdmin
       .from('users')
       .insert({
+        id: randomUUID(),
         username: 'NaWziN2',
         password: password2,
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=NaWziN2',
@@ -94,9 +97,11 @@ async function main() {
     chat1 = existingChat
   } else {
     // Create private chat between the two users
+    const chatId = randomUUID()
     const { data: chat, error: chatError } = await supabaseAdmin
       .from('chats')
       .insert({
+        id: chatId,
         isPrivate: true,
         creatorId: user1.id,
       })
@@ -111,8 +116,8 @@ async function main() {
 
     // Add members to chat
     await supabaseAdmin.from('chat_members').insert([
-      { userId: user1.id, chatId: chat1.id },
-      { userId: user2.id, chatId: chat1.id },
+      { id: randomUUID(), userId: user1.id, chatId: chat1.id },
+      { id: randomUUID(), userId: user2.id, chatId: chat1.id },
     ])
   }
 
@@ -127,12 +132,14 @@ async function main() {
     // Add some initial messages
     await supabaseAdmin.from('messages').insert([
       {
+        id: randomUUID(),
         chatId: chat1.id,
         senderId: user1.id,
         content: 'سلام! چطوری؟',
         seen: false,
       },
       {
+        id: randomUUID(),
         chatId: chat1.id,
         senderId: user2.id,
         content: 'سلام! خوبم ممنون 😊',

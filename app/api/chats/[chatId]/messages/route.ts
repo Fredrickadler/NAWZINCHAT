@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
+import { randomUUID } from 'crypto'
 
 export async function GET(
   request: NextRequest,
@@ -116,9 +117,11 @@ export async function POST(
     }
 
     // Create message
+    const messageId = randomUUID()
     const { data: message, error: messageError } = await supabaseAdmin
       .from('messages')
       .insert({
+        id: messageId,
         chatId,
         senderId: user.id,
         content: content.trim(),

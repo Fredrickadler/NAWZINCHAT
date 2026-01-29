@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateToken } from '@/lib/auth'
+import { randomUUID } from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,20 +19,35 @@ export async function POST(request: NextRequest) {
 
     // If user doesn't exist, create a new one
     if (fetchError || !user) {
+      // Generate a unique ID
+      const userId = randomUUID()
+      
       const { data: newUser, error: createError } = await supabaseAdmin
         .from('users')
         .insert({
+          id: userId,
           username: loginUsername,
           password: 'no-password-check', // No password check for testing
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${loginUsername}`,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(loginUsername)}`,
         })
         .select()
         .single()
 
-      if (createError || !newUser) {
+      if (createError) {
         console.error('Error creating user:', createError)
         return NextResponse.json(
-          { error: 'Failed to create user' },
+          { 
+            error: 'Failed to create user',
+            details: createError.message,
+            code: createError.code
+          },
+          { status: 500 }
+        )
+      }
+
+      if (!newUser) {
+        return NextResponse.json(
+          { error: 'Failed to create user - no data returned' },
           { status: 500 }
         )
       }
@@ -70,7 +86,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
